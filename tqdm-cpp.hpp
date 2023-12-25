@@ -56,8 +56,14 @@ class Tqdm {
     bool operator==(const iterator& rhs) { return _ptr == rhs._ptr; }
     bool operator!=(const iterator& rhs) { return _ptr != rhs._ptr; }
 
-    iterator operator++();
-
+    void update(int n);
+    iterator operator++() {
+      // The same with usual iterators
+      iterator i = *this;
+      _ptr++;
+      update(1);
+      return i;
+    };
     iterator operator++(int junk) {
       _ptr++;
 
@@ -113,13 +119,8 @@ class Tqdm {
 };
 
 template <typename T>
-typename Tqdm<T>::iterator Tqdm<T>::iterator::operator++() {
-  // The same with usual iterators
-  iterator i = *this;
-  _ptr++;
-
-  // ----- custom ----- //
-  _counter++;
+void Tqdm<T>::iterator::update(int n) {
+  _counter = _counter + n;
 
   std::cout << "\r";
 
@@ -168,9 +169,6 @@ typename Tqdm<T>::iterator Tqdm<T>::iterator::operator++() {
             << std::flush;
 
   _pre_time = curr_time;
-  // ----- custom ----- //
-
-  return i;
 }
 
 Tqdm<int> trange(int num) {
