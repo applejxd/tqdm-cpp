@@ -43,3 +43,4 @@ for (const auto& elem : tqdm::trange(5)) {
 
 - [ ] Nested loops
 - [ ] Manual control
+- [ ] Loop and printing compatibility

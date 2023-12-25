@@ -44,58 +44,19 @@ class Tqdm {
    */
   class iterator {
    public:
+    // corresponds to begin() and end() methods in Tqdm class
     iterator(T* ptr, int size, std::string desc)
         : _ptr(ptr),
           _size(size),
           _desc(desc),
           _start_time(std::chrono::system_clock::now()) {}
 
+    // The same with normal iterators
     T& operator*() { return *_ptr; }
+    bool operator==(const iterator& rhs) { return _ptr == rhs._ptr; }
+    bool operator!=(const iterator& rhs) { return _ptr != rhs._ptr; }
 
-    iterator operator++() {
-      iterator i = *this;
-      _ptr++;
-      _counter++;
-
-      const auto curr_time = std::chrono::system_clock::now();
-      const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-          curr_time - _start_time);
-      const auto total_s = std::chrono::duration_cast<std::chrono::seconds>(
-                               curr_time - _start_time)
-                               .count();
-      const auto curr_s = total_s % 60;
-      const auto curr_m = int(total_s / 60);
-      const auto remain_s =
-          int(total_s * double(_size - _counter) / double(_counter));
-      const auto est_s = remain_s % 60;
-      const auto est_m = int(remain_s / 60);
-
-      std::cout << "\r";
-      if (!(_desc.empty())) {
-        std::cout << _desc << ": ";
-      }
-
-      // gauge progress
-      print_gauge(double(_counter) / double(_size));
-
-      // iteration number progress
-      std::cout << " " << _counter << "/" << _size;
-      // current time consumption
-      std::cout << " [" << std::setfill('0') << std::right << std::setw(2)
-                << curr_m << ":" << std::setfill('0') << std::right
-                << std::setw(2) << curr_s << "<";
-      // estimated remaining time consumption
-      std::cout << std::setfill('0') << std::right << std::setw(2) << est_m
-                << ":" << std::setfill('0') << std::right << std::setw(2)
-                << est_s << ",  ";
-      // average time consumption for each time consumptions
-      std::cout << std::fixed << std::setprecision(2)
-                << double(ms.count()) * 1e-3 / double(_counter) << "s/it]"
-                << std::flush;
-
-      _pre_time = curr_time;
-      return i;
-    }
+    iterator operator++();
 
     iterator operator++(int junk) {
       _ptr++;
@@ -106,12 +67,10 @@ class Tqdm {
       return *this;
     }
 
-    bool operator==(const iterator& rhs) { return _ptr == rhs._ptr; }
-    bool operator!=(const iterator& rhs) { return _ptr != rhs._ptr; }
-
    private:
     T* _ptr;
     int _size;
+    // description for tqdm
     std::string _desc;
 
     int _counter{0};
@@ -124,10 +83,21 @@ class Tqdm {
     _data = new T[_size];
     for (int i = 0; i < _size; i++) _data[i] = vec[i];
   }
+  // with description
   Tqdm(const std::vector<T>& vec, const std::string& desc)
       : _size(vec.size()), _desc(desc) {
     _data = new T[_size];
     for (int i = 0; i < _size; i++) _data[i] = vec[i];
+  }
+  // for manual
+  Tqdm(int size) : _size(size) {
+    _data = new T[_size];
+    for (int i = 0; i < _size; i++) _data[i] = i;
+  }
+  // for manual with description
+  Tqdm(int size, const std::string& desc) : _size(size), _desc(desc) {
+    _data = new T[_size];
+    for (int i = 0; i < _size; i++) _data[i] = i;
   }
   ~Tqdm() { std::cout << std::endl; }
 
@@ -138,8 +108,70 @@ class Tqdm {
  private:
   T* _data;
   int _size;
+  // description for tqdm
   std::string _desc = "";
 };
+
+template <typename T>
+typename Tqdm<T>::iterator Tqdm<T>::iterator::operator++() {
+  // The same with usual iterators
+  iterator i = *this;
+  _ptr++;
+
+  // ----- custom ----- //
+  _counter++;
+
+  std::cout << "\r";
+
+  // description
+  if (!(_desc.empty())) std::cout << _desc << ": ";
+
+  // gauge progress
+  print_gauge(double(_counter) / double(_size));
+
+  const auto curr_time = std::chrono::system_clock::now();
+
+  // total time [ms] from beginning
+  const auto total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            curr_time - _start_time)
+                            .count();
+  // total time [s] from beginning
+  const auto total_s =
+      std::chrono::duration_cast<std::chrono::seconds>(curr_time - _start_time)
+          .count();
+  // total time [min] when it is devided into min and sec
+  const auto total_time_m = int(total_s / 60);
+  // total time [s] when it is devided into min and sec
+  const auto total_time_s = total_s % 60;
+
+  // estimated remaining time [s]
+  const auto remain_s =
+      int(total_s * double(_size - _counter) / double(_counter));
+  // estimated remaining time [min] when it is devided into min and sec
+  const auto remain_time_m = int(remain_s / 60);
+  // estimated remaining time [s] when it is devided into min and sec
+  const auto remain_time_s = remain_s % 60;
+
+  // iteration number progress
+  std::cout << " " << _counter << "/" << _size;
+  // current time consumption
+  std::cout << " [" << std::setfill('0') << std::right << std::setw(2)
+            << total_time_m << ":" << std::setfill('0') << std::right
+            << std::setw(2) << total_time_s << "<";
+  // estimated remaining time consumption
+  std::cout << std::setfill('0') << std::right << std::setw(2) << remain_time_m
+            << ":" << std::setfill('0') << std::right << std::setw(2)
+            << remain_time_s << ",  ";
+  // average time consumption for each time consumptions
+  std::cout << std::fixed << std::setprecision(2)
+            << double(total_ms) * 1e-3 / double(_counter) << "s/it]"
+            << std::flush;
+
+  _pre_time = curr_time;
+  // ----- custom ----- //
+
+  return i;
+}
 
 Tqdm<int> trange(int num) {
   std::vector<int> v(num);
