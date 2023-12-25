@@ -16,10 +16,5 @@ int main() {
     sleep(1);
   }
 
-  for (const auto& elem : tqdm::Tqdm<int>(5)) {
-    std::cout << elem << std::endl;
-    sleep(1);
-  }
-
   return 0;
 }
