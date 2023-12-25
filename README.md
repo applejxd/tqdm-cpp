@@ -1,6 +1,6 @@
 # tqdm-cpp
 
-Python tqdm-like header-only progress bar library in C++
+Python [tqdm](https://github.com/tqdm/tqdm)-like header-only progress bar library in C++
 
 ## Installtion
 
@@ -20,12 +20,20 @@ For local installation, please download the above file to your project folder an
 You can use this tqdm library with range-based for sytax.
 
 ```cpp
+// wrap std::vector
 for (const auto& elem : tqdm::Tqdm<int>({0, 1, 2, 3, 4})) {
   std::cout << elem << std::endl;
   sleep(1);
 }
 
-for (const auto& elem : tqdm::Tqdm<int>(5)) {
+// add description
+for (const auto& elem : tqdm::Tqdm<int>({0, 1, 2, 3, 4}, "test")) {
+  std::cout << elem << std::endl;
+  sleep(1);
+}
+
+// trange syntax
+for (const auto& elem : tqdm::trange(5)) {
   std::cout << elem << std::endl;
   sleep(1);
 }
@@ -33,7 +41,5 @@ for (const auto& elem : tqdm::Tqdm<int>(5)) {
 
 ## ToDo
 
-- [ ] Add description
-- [ ] Add syntaxes (trange and so on)
 - [ ] Nested loops
 - [ ] Manual control

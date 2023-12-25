@@ -3,6 +3,7 @@
 #include <chrono>
 #include <iomanip>
 #include <iostream>
+#include <numeric>
 #include <vector>
 
 #define TQDM_MAJOR_VERSION 0
@@ -11,9 +12,11 @@
 namespace {
 
 void print_gauge(double x) {
-  std::cout << "\r" << std::setfill(' ') << std::right << std::setw(3)
-            << int(x * 100) << "%|";
+  // write percentage
+  std::cout << std::setfill(' ') << std::right << std::setw(3) << int(x * 100)
+            << "%|";
 
+  // write gauge
   for (uint i = 0; i < 20; ++i) {
     if (double(i) / 20. < x) {
       std::cout << "█";
@@ -41,9 +44,10 @@ class Tqdm {
    */
   class iterator {
    public:
-    iterator(T* ptr, int size)
+    iterator(T* ptr, int size, std::string desc)
         : _ptr(ptr),
           _size(size),
+          _desc(desc),
           _start_time(std::chrono::system_clock::now()) {}
 
     T& operator*() { return *_ptr; }
@@ -66,8 +70,14 @@ class Tqdm {
       const auto est_s = remain_s % 60;
       const auto est_m = int(remain_s / 60);
 
+      std::cout << "\r";
+      if (!(_desc.empty())) {
+        std::cout << _desc << ": ";
+      }
+
       // gauge progress
       print_gauge(double(_counter) / double(_size));
+
       // iteration number progress
       std::cout << " " << _counter << "/" << _size;
       // current time consumption
@@ -102,28 +112,39 @@ class Tqdm {
    private:
     T* _ptr;
     int _size;
+    std::string _desc;
+
     int _counter{0};
     std::chrono::system_clock::time_point _start_time;
     std::chrono::system_clock::time_point _pre_time;
     std::time_t total_time{0};
   };
 
-  Tqdm(int size) : _size(size) {
-    _data = new T[_size];
-    for (int i = 0; i < _size; i++) _data[i] = i;
-  }
   Tqdm(const std::vector<T>& vec) : _size(vec.size()) {
+    _data = new T[_size];
+    for (int i = 0; i < _size; i++) _data[i] = vec[i];
+  }
+  Tqdm(const std::vector<T>& vec, const std::string& desc)
+      : _size(vec.size()), _desc(desc) {
     _data = new T[_size];
     for (int i = 0; i < _size; i++) _data[i] = vec[i];
   }
   ~Tqdm() { std::cout << std::endl; }
 
-  iterator begin() { return iterator(_data, _size); }
-  iterator end() { return iterator(_data + _size, _size); }
+  // begin() and end() method defines the way to create iterator
+  iterator begin() { return iterator(_data, _size, _desc); }
+  iterator end() { return iterator(_data + _size, _size, _desc); }
 
  private:
   T* _data;
   int _size;
+  std::string _desc = "";
 };
+
+Tqdm<int> trange(int num) {
+  std::vector<int> v(num);
+  std::iota(v.begin(), v.end(), 0);
+  return Tqdm<int>(v);
+}
 
 }  // namespace tqdm
