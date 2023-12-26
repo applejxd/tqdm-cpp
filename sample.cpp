@@ -23,12 +23,12 @@ int main() {
 
   std::cout << "manual update" << std::endl;
   {
-    auto tqdm = tqdm::Tqdm<int>(100);
-    auto pbar = tqdm.begin();
+    auto pbar = tqdm::Pbar(100);
     for (int i = 0; i < 10; i++) {
       sleep(1);
       pbar.update(10);
     }
+    pbar.close();
   }
 
   return 0;

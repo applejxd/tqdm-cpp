@@ -32,49 +32,22 @@ void print_gauge(double x) {
 
 namespace tqdm {
 
-/**
- * override iterator syntax
- * (https://gist.github.com/jeetsukumaran/307264)
- */
-template <typename T>
-class TqdmIterator : public std::iterator<std::input_iterator_tag, T> {
+class Pbar {
  public:
-  // corresponds to begin() and end() methods in Tqdm class
-  TqdmIterator(T* ptr, int size, std::string desc)
-      : _ptr(ptr),
-        _size(size),
+  Pbar(int size, const std::string& desc)
+      : _size(size),
         _desc(desc),
         _start_time(std::chrono::system_clock::now()) {}
 
-  // The same with normal iterators
-  T& operator*() { return *_ptr; }
-  bool operator==(const TqdmIterator& rhs) { return _ptr == rhs._ptr; }
-  bool operator!=(const TqdmIterator& rhs) { return _ptr != rhs._ptr; }
+  Pbar(int size) : Pbar(size, "") {}
 
   void update(int n);
-
-  TqdmIterator operator++() {
-    // The same with usual iterators
-    TqdmIterator i = *this;
-    _ptr++;
-    update(1);
-    return i;
-  };
-
-  TqdmIterator operator++(int junk) {
-    _ptr++;
-
-    const auto curr_time = std::chrono::system_clock::now();
-    _pre_time = curr_time;
-    _counter++;
-    return *this;
-  }
+  void close() { std::cout << std::endl; }
 
  private:
-  T* _ptr;
   int _size;
   // description for tqdm
-  std::string _desc;
+  std::string _desc = "";
 
   int _counter{0};
   std::chrono::system_clock::time_point _start_time;
@@ -82,8 +55,7 @@ class TqdmIterator : public std::iterator<std::input_iterator_tag, T> {
   std::time_t total_time{0};
 };
 
-template <typename T>
-void TqdmIterator<T>::update(int n) {
+void Pbar::update(int n) {
   _counter = _counter + n;
 
   std::cout << "\r";
@@ -136,43 +108,80 @@ void TqdmIterator<T>::update(int n) {
 }
 
 /**
+ * override iterator syntax
+ * (https://gist.github.com/jeetsukumaran/307264)
+ */
+template <typename T>
+class TqdmIterator : public std::iterator<std::input_iterator_tag, T> {
+ public:
+  // corresponds to begin() and end() methods in Tqdm class
+  TqdmIterator(typename std::vector<T>::iterator iterator, size_t size,
+               const std::string& desc)
+      : _pbar(size, desc) {
+    _iterator = iterator;
+  }
+
+  // The same with normal iterators
+  T& operator*() { return *_iterator; }
+  bool operator==(const TqdmIterator& rhs) {
+    return _iterator == rhs._iterator;
+  }
+  bool operator!=(const TqdmIterator& rhs) {
+    return _iterator != rhs._iterator;
+  }
+
+  TqdmIterator operator++() {
+    // The same with usual iterators
+    TqdmIterator i = *this;
+    _iterator++;
+    _pbar.update(1);
+    return i;
+  };
+
+  TqdmIterator operator++(int junk) {
+    _iterator++;
+    _pbar.update(1);
+    return *this;
+  }
+
+ private:
+  typename std::vector<T>::iterator _iterator;
+  Pbar _pbar;
+};
+
+/**
  * tqdm class by overriding "range-based for" syntax
  * (https://en.cppreference.com/w/cpp/language/range-for)
  */
 template <typename T>
 class Tqdm {
  public:
-  Tqdm(const std::vector<T>& vec) : _size(vec.size()) {
-    _data = new T[_size];
-    for (int i = 0; i < _size; i++) _data[i] = vec[i];
-  }
+  Tqdm(const std::vector<T>& vec) : _vec(vec) {}
+
   // with description
   Tqdm(const std::vector<T>& vec, const std::string& desc)
-      : _size(vec.size()), _desc(desc) {
-    _data = new T[_size];
-    for (int i = 0; i < _size; i++) _data[i] = vec[i];
-  }
-  // for manual
-  Tqdm(int size) : _size(size) {
-    _data = new T[_size];
-    for (int i = 0; i < _size; i++) _data[i] = i;
-  }
+      : _vec(vec), _desc(desc) {}
+
   // for manual with description
-  Tqdm(int size, const std::string& desc) : _size(size), _desc(desc) {
-    _data = new T[_size];
-    for (int i = 0; i < _size; i++) _data[i] = i;
+  Tqdm(int size, const std::string& desc) : _desc(desc) {
+    std::vector<int> v(size);
+    std::iota(v.begin(), v.end(), 0);
+    std::copy(v.begin(), v.end(), std::back_inserter(_vec));
   }
+
+  // for manual
+  Tqdm(int size) : Tqdm(size, "") {}
+
   ~Tqdm() { std::cout << std::endl; }
 
   using iterator = TqdmIterator<T>;
 
   // begin() and end() method defines the way to create iterator
-  iterator begin() { return iterator(_data, _size, _desc); }
-  iterator end() { return iterator(_data + _size, _size, _desc); }
+  iterator begin() { return iterator(_vec.begin(), _vec.size(), _desc); }
+  iterator end() { return iterator(_vec.end(), _vec.size(), _desc); }
 
  private:
-  T* _data;
-  int _size;
+  std::vector<T> _vec;
   // description for tqdm
   std::string _desc = "";
 };
