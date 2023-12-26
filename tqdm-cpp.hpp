@@ -3,6 +3,7 @@
 #include <chrono>
 #include <iomanip>
 #include <iostream>
+#include <iterator>
 #include <numeric>
 #include <vector>
 
@@ -32,94 +33,57 @@ void print_gauge(double x) {
 namespace tqdm {
 
 /**
- * tqdm class by overriding "range-based for" syntax
- * (https://en.cppreference.com/w/cpp/language/range-for)
+ * override iterator syntax
+ * (https://gist.github.com/jeetsukumaran/307264)
  */
 template <typename T>
-class Tqdm {
+class TqdmIterator : public std::iterator<std::input_iterator_tag, T> {
  public:
-  /**
-   * override iterator syntax
-   * (https://gist.github.com/jeetsukumaran/307264)
-   */
-  class iterator {
-   public:
-    // corresponds to begin() and end() methods in Tqdm class
-    iterator(T* ptr, int size, std::string desc)
-        : _ptr(ptr),
-          _size(size),
-          _desc(desc),
-          _start_time(std::chrono::system_clock::now()) {}
+  // corresponds to begin() and end() methods in Tqdm class
+  TqdmIterator(T* ptr, int size, std::string desc)
+      : _ptr(ptr),
+        _size(size),
+        _desc(desc),
+        _start_time(std::chrono::system_clock::now()) {}
 
-    // The same with normal iterators
-    T& operator*() { return *_ptr; }
-    bool operator==(const iterator& rhs) { return _ptr == rhs._ptr; }
-    bool operator!=(const iterator& rhs) { return _ptr != rhs._ptr; }
+  // The same with normal iterators
+  T& operator*() { return *_ptr; }
+  bool operator==(const TqdmIterator& rhs) { return _ptr == rhs._ptr; }
+  bool operator!=(const TqdmIterator& rhs) { return _ptr != rhs._ptr; }
 
-    void update(int n);
-    iterator operator++() {
-      // The same with usual iterators
-      iterator i = *this;
-      _ptr++;
-      update(1);
-      return i;
-    };
-    iterator operator++(int junk) {
-      _ptr++;
+  void update(int n);
 
-      const auto curr_time = std::chrono::system_clock::now();
-      _pre_time = curr_time;
-      _counter++;
-      return *this;
-    }
-
-   private:
-    T* _ptr;
-    int _size;
-    // description for tqdm
-    std::string _desc;
-
-    int _counter{0};
-    std::chrono::system_clock::time_point _start_time;
-    std::chrono::system_clock::time_point _pre_time;
-    std::time_t total_time{0};
+  TqdmIterator operator++() {
+    // The same with usual iterators
+    TqdmIterator i = *this;
+    _ptr++;
+    update(1);
+    return i;
   };
 
-  Tqdm(const std::vector<T>& vec) : _size(vec.size()) {
-    _data = new T[_size];
-    for (int i = 0; i < _size; i++) _data[i] = vec[i];
-  }
-  // with description
-  Tqdm(const std::vector<T>& vec, const std::string& desc)
-      : _size(vec.size()), _desc(desc) {
-    _data = new T[_size];
-    for (int i = 0; i < _size; i++) _data[i] = vec[i];
-  }
-  // for manual
-  Tqdm(int size) : _size(size) {
-    _data = new T[_size];
-    for (int i = 0; i < _size; i++) _data[i] = i;
-  }
-  // for manual with description
-  Tqdm(int size, const std::string& desc) : _size(size), _desc(desc) {
-    _data = new T[_size];
-    for (int i = 0; i < _size; i++) _data[i] = i;
-  }
-  ~Tqdm() { std::cout << std::endl; }
+  TqdmIterator operator++(int junk) {
+    _ptr++;
 
-  // begin() and end() method defines the way to create iterator
-  iterator begin() { return iterator(_data, _size, _desc); }
-  iterator end() { return iterator(_data + _size, _size, _desc); }
+    const auto curr_time = std::chrono::system_clock::now();
+    _pre_time = curr_time;
+    _counter++;
+    return *this;
+  }
 
  private:
-  T* _data;
+  T* _ptr;
   int _size;
   // description for tqdm
-  std::string _desc = "";
+  std::string _desc;
+
+  int _counter{0};
+  std::chrono::system_clock::time_point _start_time;
+  std::chrono::system_clock::time_point _pre_time;
+  std::time_t total_time{0};
 };
 
 template <typename T>
-void Tqdm<T>::iterator::update(int n) {
+void TqdmIterator<T>::update(int n) {
   _counter = _counter + n;
 
   std::cout << "\r";
@@ -170,6 +134,48 @@ void Tqdm<T>::iterator::update(int n) {
 
   _pre_time = curr_time;
 }
+
+/**
+ * tqdm class by overriding "range-based for" syntax
+ * (https://en.cppreference.com/w/cpp/language/range-for)
+ */
+template <typename T>
+class Tqdm {
+ public:
+  Tqdm(const std::vector<T>& vec) : _size(vec.size()) {
+    _data = new T[_size];
+    for (int i = 0; i < _size; i++) _data[i] = vec[i];
+  }
+  // with description
+  Tqdm(const std::vector<T>& vec, const std::string& desc)
+      : _size(vec.size()), _desc(desc) {
+    _data = new T[_size];
+    for (int i = 0; i < _size; i++) _data[i] = vec[i];
+  }
+  // for manual
+  Tqdm(int size) : _size(size) {
+    _data = new T[_size];
+    for (int i = 0; i < _size; i++) _data[i] = i;
+  }
+  // for manual with description
+  Tqdm(int size, const std::string& desc) : _size(size), _desc(desc) {
+    _data = new T[_size];
+    for (int i = 0; i < _size; i++) _data[i] = i;
+  }
+  ~Tqdm() { std::cout << std::endl; }
+
+  using iterator = TqdmIterator<T>;
+
+  // begin() and end() method defines the way to create iterator
+  iterator begin() { return iterator(_data, _size, _desc); }
+  iterator end() { return iterator(_data + _size, _size, _desc); }
+
+ private:
+  T* _data;
+  int _size;
+  // description for tqdm
+  std::string _desc = "";
+};
 
 Tqdm<int> trange(int num) {
   std::vector<int> v(num);
