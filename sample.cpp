@@ -7,12 +7,12 @@
 
 int main() {
   std::cout << "wrap std::vector" << std::endl;
-  for (const auto& elem : tqdm::Tqdm<int>({0, 1, 2, 3, 4})) {
+  for (const auto& elem : tqdm::tqdm<int>({0, 1, 2, 3, 4})) {
     sleep(1);
   }
 
   std::cout << "add description" << std::endl;
-  for (const auto& elem : tqdm::Tqdm<int>({0, 1, 2, 3, 4}, "test")) {
+  for (const auto& elem : tqdm::tqdm<int>({0, 1, 2, 3, 4}, "test")) {
     sleep(1);
   }
 
@@ -23,7 +23,7 @@ int main() {
 
   std::cout << "manual update" << std::endl;
   {
-    auto pbar = tqdm::Pbar(100);
+    auto pbar = tqdm::tqdm(100);
     for (int i = 0; i < 10; i++) {
       sleep(1);
       pbar.update(10);

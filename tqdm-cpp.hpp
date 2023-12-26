@@ -28,10 +28,6 @@ void print_gauge(double x) {
   std::cout << "|";
 }
 
-}  // namespace
-
-namespace tqdm {
-
 class Pbar {
  public:
   Pbar(int size, const std::string& desc)
@@ -162,16 +158,6 @@ class Tqdm {
   Tqdm(const std::vector<T>& vec, const std::string& desc)
       : _vec(vec), _desc(desc) {}
 
-  // for manual with description
-  Tqdm(int size, const std::string& desc) : _desc(desc) {
-    std::vector<int> v(size);
-    std::iota(v.begin(), v.end(), 0);
-    std::copy(v.begin(), v.end(), std::back_inserter(_vec));
-  }
-
-  // for manual
-  Tqdm(int size) : Tqdm(size, "") {}
-
   ~Tqdm() { std::cout << std::endl; }
 
   using iterator = TqdmIterator<T>;
@@ -185,6 +171,20 @@ class Tqdm {
   // description for tqdm
   std::string _desc = "";
 };
+}  // namespace
+
+namespace tqdm {
+
+Pbar tqdm(int total) { return Pbar(total); }
+
+template <typename T>
+Tqdm<T> tqdm(const std::vector<T>& vec, const std::string& desc) {
+  return Tqdm<T>(vec, desc);
+}
+template <typename T>
+Tqdm<T> tqdm(const std::vector<T>& vec) {
+  return Tqdm<T>(vec);
+}
 
 Tqdm<int> trange(int num) {
   std::vector<int> v(num);
