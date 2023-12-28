@@ -38,7 +38,6 @@ class Pbar {
   Pbar(int size) : Pbar(size, "") {}
 
   void update(int n);
-  void close() { std::cout << std::endl; }
 
  private:
   int _size;
@@ -97,8 +96,13 @@ void Pbar::update(int n) {
             << remain_time_s << ",  ";
   // average time consumption for each time consumptions
   std::cout << std::fixed << std::setprecision(2)
-            << double(total_ms) * 1e-3 / double(_counter) << "s/it]"
-            << std::flush;
+            << double(total_ms) * 1e-3 / double(_counter) << "s/it]";
+
+  if (_counter == _size) {
+    std::cout << std::endl;
+  } else {
+    std::cout << std::flush;
+  }
 
   _pre_time = curr_time;
 }
@@ -157,8 +161,6 @@ class Tqdm {
   // with description
   Tqdm(const std::vector<T>& vec, const std::string& desc)
       : _vec(vec), _desc(desc) {}
-
-  ~Tqdm() { std::cout << std::endl; }
 
   using iterator = TqdmIterator<T>;
 
