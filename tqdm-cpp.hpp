@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <iostream>
 #include <iterator>
+#include <map>
 #include <numeric>
 #include <vector>
 
@@ -30,19 +31,23 @@ void print_gauge(double x) {
 
 class Pbar {
  public:
-  Pbar(int size, const std::string& desc)
-      : _size(size),
-        _desc(desc),
-        _start_time(std::chrono::system_clock::now()) {}
+  Pbar(int size, const std::map<std::string, std::string>& kwargs)
+      : _size(size), _start_time(std::chrono::system_clock::now()) {
+    if (kwargs.find("desc") != kwargs.end()) _desc = kwargs.at("desc");
+    if (kwargs.find("leave") != kwargs.end())
+      std::istringstream(kwargs.at("leave")) >> std::boolalpha >> _leave;
+  }
 
-  Pbar(int size) : Pbar(size, "") {}
+  Pbar(int size) : Pbar(size, {}) {}
 
   void update(int n);
 
  private:
   int _size;
+
   // description for tqdm
   std::string _desc = "";
+  bool _leave = true;
 
   int _counter{0};
   std::chrono::system_clock::time_point _start_time;
@@ -98,8 +103,16 @@ void Pbar::update(int n) {
   std::cout << std::fixed << std::setprecision(2)
             << double(total_ms) * 1e-3 / double(_counter) << "s/it]";
 
+  // 終端処理
   if (_counter == _size) {
-    std::cout << std::endl;
+    if (_leave) {
+      std::cout << std::endl;
+    } else {
+      std::cout << std::flush;
+      std::cout << "\r";
+      for (int idx = 0; idx < 60; idx++) std::cout << " ";
+      std::cout << "\r" << std::flush;
+    }
   } else {
     std::cout << std::flush;
   }
@@ -116,8 +129,8 @@ class TqdmIterator : public std::iterator<std::input_iterator_tag, T> {
  public:
   // corresponds to begin() and end() methods in Tqdm class
   TqdmIterator(typename std::vector<T>::iterator iterator, size_t size,
-               const std::string& desc)
-      : _pbar(size, desc) {
+               const std::map<std::string, std::string>& kwargs)
+      : _pbar(size, kwargs) {
     _iterator = iterator;
   }
 
@@ -158,20 +171,19 @@ class Tqdm {
  public:
   Tqdm(const std::vector<T>& vec) : _vec(vec) {}
 
-  // with description
-  Tqdm(const std::vector<T>& vec, const std::string& desc)
-      : _vec(vec), _desc(desc) {}
+  Tqdm(const std::vector<T>& vec,
+       const std::map<std::string, std::string>& kwargs)
+      : _vec(vec), _kwargs(kwargs) {}
 
   using iterator = TqdmIterator<T>;
 
   // begin() and end() method defines the way to create iterator
-  iterator begin() { return iterator(_vec.begin(), _vec.size(), _desc); }
-  iterator end() { return iterator(_vec.end(), _vec.size(), _desc); }
+  iterator begin() { return iterator(_vec.begin(), _vec.size(), _kwargs); }
+  iterator end() { return iterator(_vec.end(), _vec.size(), _kwargs); }
 
  private:
   std::vector<T> _vec;
-  // description for tqdm
-  std::string _desc = "";
+  std::map<std::string, std::string> _kwargs;
 };
 }  // namespace
 
@@ -180,9 +192,11 @@ namespace tqdm {
 Pbar tqdm(int total) { return Pbar(total); }
 
 template <typename T>
-Tqdm<T> tqdm(const std::vector<T>& vec, const std::string& desc) {
-  return Tqdm<T>(vec, desc);
+Tqdm<T> tqdm(const std::vector<T>& vec,
+             const std::map<std::string, std::string>& kwargs) {
+  return Tqdm<T>(vec, kwargs);
 }
+
 template <typename T>
 Tqdm<T> tqdm(const std::vector<T>& vec) {
   return Tqdm<T>(vec);
