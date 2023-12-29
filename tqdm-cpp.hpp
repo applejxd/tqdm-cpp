@@ -40,6 +40,8 @@ class Pbar {
 
   Pbar(int size) : Pbar(size, {}) {}
 
+  ~Pbar() {}
+
   void update(int n);
 
  private:
@@ -56,6 +58,7 @@ class Pbar {
 };
 
 void Pbar::update(int n) {
+  if (_counter == 0) std::cout << std::endl;
   _counter = _counter + n;
 
   std::cout << "\r";
@@ -106,14 +109,15 @@ void Pbar::update(int n) {
   // 終端処理
   if (_counter == _size) {
     if (_leave) {
+      // 改行する
       std::cout << std::endl;
     } else {
+      // 出力した上で出力を消す
       std::cout << std::flush;
-      std::cout << "\r";
-      for (int idx = 0; idx < 60; idx++) std::cout << " ";
-      std::cout << "\r" << std::flush;
+      std::cout << "\e[2K\e[1A\e[100C" << std::flush;
     }
   } else {
+    // 出力して改行しない
     std::cout << std::flush;
   }
 
@@ -169,8 +173,6 @@ class TqdmIterator : public std::iterator<std::input_iterator_tag, T> {
 template <typename T>
 class Tqdm {
  public:
-  Tqdm(const std::vector<T>& vec) : _vec(vec) {}
-
   Tqdm(const std::vector<T>& vec,
        const std::map<std::string, std::string>& kwargs)
       : _vec(vec), _kwargs(kwargs) {}
@@ -199,13 +201,15 @@ Tqdm<T> tqdm(const std::vector<T>& vec,
 
 template <typename T>
 Tqdm<T> tqdm(const std::vector<T>& vec) {
-  return Tqdm<T>(vec);
+  return Tqdm<T>(vec, {});
 }
 
-Tqdm<int> trange(int num) {
+Tqdm<int> trange(int num, const std::map<std::string, std::string>& kwargs) {
   std::vector<int> v(num);
   std::iota(v.begin(), v.end(), 0);
-  return Tqdm<int>(v);
+  return Tqdm<int>(v, kwargs);
 }
+
+Tqdm<int> trange(int num) { return trange(num, {}); }
 
 }  // namespace tqdm
