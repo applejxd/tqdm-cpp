@@ -44,6 +44,8 @@ class Pbar {
 
   void update(int n);
 
+  static int _n_instance;
+
  private:
   int _size;
 
@@ -57,8 +59,14 @@ class Pbar {
   std::time_t total_time{0};
 };
 
+int Pbar::_n_instance = 0;
+
 void Pbar::update(int n) {
-  if (_counter == 0) std::cout << std::endl;
+  if (_counter == 0) {
+    _n_instance++;
+    if (_n_instance > 1) std::cout << std::endl;
+  }
+
   _counter = _counter + n;
 
   std::cout << "\r";
@@ -108,13 +116,21 @@ void Pbar::update(int n) {
 
   // 終端処理
   if (_counter == _size) {
+    --_n_instance;
+
     if (_leave) {
-      // 改行する
+      // 出力を残したまま改行する
       std::cout << std::endl;
     } else {
-      // 出力した上で出力を消す
       std::cout << std::flush;
-      std::cout << "\e[2K\e[1A\e[100C" << std::flush;
+
+      if (_n_instance > 0) {
+        // まだゲージが残っている場合はクリアして前ゲージの末端に移動
+        std::cout << "\e[2K\e[1A\e[100C" << std::flush;
+      } else {
+        // ゲージが残っていない場合はクリアのみ
+        std::cout << "\e[2K" << std::flush;
+      }
     }
   } else {
     // 出力して改行しない

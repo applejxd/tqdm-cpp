@@ -48,5 +48,4 @@ Look at [sample.cpp](./sample.cpp).
 
 ## ToDo
 
-- [ ] Nested loops
 - [ ] Loop and printing compatibility
